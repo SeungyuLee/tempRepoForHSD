@@ -43,16 +43,21 @@ const float* __attribute__((optimize("O0"))) FPGA::run()
 
 void FPGA::largeMV(const float* large_mat, const float* input,
 		float* output, int M, int N)
-{
-	float* vec = this->vector(); // vector size 64
-    	float* mat = this->matrix(); // matrix size 64 * 64
+{	
+	float* vec = this->vector(); // vector size M
+    	float* mat = this->matrix(); // matrix size M * N
 	const float* output_fpga;
 
 	int horizon_mult = (M%64==0)? M/64 : M/64 + 1;
 	int vertical_mult = (N%64==0)? N/64 : N/64 + 1;
 
-	float* dummy = (float*) calloc(SIZE, sizeof(float));
+	for(int i = 0; i < N; i++)
+		output[i] = 0.0f; // output initialization
 
+	float* dummy = new float[SIZE];
+	for(int i = 0; i < SIZE; i++)
+		dummy[i] = 0.0f;
+	
 	for(int i = 0; i < vertical_mult; i++){
 	  for(int j = 0; j < horizon_mult; j++){
 	    if(j != M/64)
@@ -61,7 +66,7 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 		memcpy(vec, input + SIZE * j, sizeof(float)*(M%64));
 		memcpy(vec+M%64, dummy, sizeof(float)*(SIZE-M%64));
 	    }
-
+	 
 	    if(j!=M/64 && i!=N/64)
 	    	for(int k = 0; k < SIZE; k++)
 		  memcpy(mat + SIZE*k, large_mat + M*SIZE*i + M*k+SIZE*j, sizeof(float)*SIZE);
@@ -88,7 +93,7 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 
 		}
 	    }
-
+	
 	    output_fpga = this->run();	
 	if(i != N/64)
 	    for(int k = 0; k < SIZE; k++)
@@ -97,6 +102,6 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 	    for(int k = 0; k < N%64; k++)
 		output[k+SIZE*i] += output_fpga[k];
 	  }	
-	}			
+	}
 
-}
+}	
